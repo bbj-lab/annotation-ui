@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Label Annotator</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { font-family: Arial, sans-serif; height: 100vh; margin: 0; display: flex; }
+        .container { display: flex; width: 100%; }
+        #left { flex: 2; padding: 20px; border-right: 1px solid #ccc; overflow-y: auto; }
+        #right { flex: 1; padding: 20px; overflow-y: auto; }
+        .navigation { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .navigation button, .navigation input { margin: 0 5px; }
+        .editable-field { width: 100%; margin: 5px 0; }
+        .save-button, .unreviewed-button { margin-top: 20px; width: 100%; }
+        .highlight-pink { background-color: lightpink; }
+        .highlight-yellow { background-color: yellow; }
+        .highlight-green { background-color: lightgreen; }
+        .note-text { white-space: pre-wrap; }
+        h2 { font-size: 1.5em; }
+        p.note-text { font-size: 0.9em; }
+        .toggle-btn-group { display: flex; }
+        .toggle-btn-group button { flex: 1; margin: 0 2px; }
+        .notification { display: none; }
+        .notification.show { display: block; }
+        .answer-row { display: flex; align-items: center; }
+        .answer-row .form-control { flex-grow: 1; }
+        .answer-row label { margin-left: 10px; margin-bottom: 0; }
+        .spinner-border { display: none; }
+        .spinner-border.show { display: inline-block; }
+        .instructions { text-align: center; font-size: 1.5em; margin-top: 20%; }
+    </style>
+</head>
+<body>
+    <div id="app" class="container">
+        <div id="left" ref="noteContainer">
+            <div v-if="!fileLoaded" class="instructions">
+                <p>Please load a file to start annotating.</p>
+                <input type="file" @change="handleFileUpload" class="form-control-file" ref="fileInput">
+            </div>
+            <div v-else>
+                <h2>{{ noteTitle }}</h2>
+                <p v-html="highlightedText" class="note-text"></p>
+                <p>Subject ID: {{ note.subject_id }}</p>
+                <p>HADM ID: {{ note.hadm_id }}</p>
+                <input type="file" @change="handleFileUpload" class="form-control-file" ref="fileInput">
+            </div>
+        </div>
+        <div id="right" v-if="fileLoaded">
+            <div class="navigation">
+                <button @click="prevNote" class="btn btn-primary">Prev</button>
+                <button @click="nextNote" class="btn btn-primary">Next</button>
+                <input type="number" v-model="gotoRow" class="form-control" placeholder="Jump to note..." min="1">
+                <button @click="goToNote" class="btn btn-secondary">Go</button>
+            </div>
+            <div>
+                <div class="answer-row">
+                    <label>Answer:</label>
+                    <label style="margin-left: 10px;">Not Specified: <input v-model="note.not_specified" type="checkbox"></label>
+                </div>
+                <div v-if="note.question_type === 'yes'" class="toggle-btn-group">
+                    <button :class="{'btn btn-primary': note.answer === 'Yes', 'btn btn-outline-primary': note.answer !== 'Yes'}" @click="note.answer = 'Yes'">Yes</button>
+                    <button :class="{'btn btn-primary': note.answer === 'No', 'btn btn-outline-primary': note.answer !== 'No'}" @click="note.answer = 'No'">No</button>
+                </div>
+                <div v-else>
+                    <input v-model="note.answer" type="text" class="form-control editable-field" ref="answerField">
+                </div>
+                <label>Question: <textarea v-model="note.question" class="form-control editable-field" rows="3" maxlength="250" cols="100"></textarea></label><br>
+                <label>Type: <textarea v-model="note.type" class="form-control editable-field" rows="3" maxlength="250" cols="100"></textarea></label><br>
+                <label>Section: <textarea v-model="note.section" class="form-control editable-field" rows="3" maxlength="250" cols="100"></textarea></label><br>
+                <label>Source: <textarea v-model="note.source" class="form-control editable-field" rows="3" maxlength="250" cols="100"></textarea></label><br>
+                <label>Explanation: <textarea v-model="note.explanation" class="form-control editable-field" rows="3" maxlength="250" cols="100"></textarea></label><br>
+                <label>Invalid Label: <input v-model="note.invalid_label" type="checkbox"></label><br>
+                <button @click="saveAndNext" class="btn btn-success save-button">
+                    Save
+                    <span :class="{ show: isSaving }" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                </button>
+                <button @click="goToFirstUnreviewed" class="btn btn-info unreviewed-button" style="margin-bottom: 10px;">Go to First Unreviewed</button>
+                <div id="message" class="alert alert-success notification" :class="{ show: showMessage }">{{ saveMessage }}</div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>
