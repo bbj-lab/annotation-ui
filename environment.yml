@@ -1,0 +1,7 @@
+name: label_annotator
+dependencies:
+  - python=3.9
+  - flask
+  - flask-cors
+  - pandas
+  - pip
