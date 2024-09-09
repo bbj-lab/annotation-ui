@@ -46,7 +46,6 @@ new Vue({
 
             highlights.sort((a, b) => {
                 if (a.start === b.start) {
-                    // If start positions are the same, prioritize by highlight class
                     if (a.class === 'highlight-yellow') return -1;
                     if (b.class === 'highlight-yellow') return 1;
                     if (a.class === 'highlight-green') return -1;
@@ -73,15 +72,18 @@ new Vue({
     },
     methods: {
         loadNote() {
+            console.log('Loading note for row:', this.currentRow);
             fetch(`/api/note/${this.currentRow}`)
                 .then(response => response.json())
                 .then(data => {
+                    console.log('Note data received from API:', data);
                     if (data.error) {
                         alert(data.error);
                     } else {
                         this.note = data;
-                        this.note.invalid_label = this.note.invalid_label === 1 ? 1 : 0;
-                        this.note.not_specified = this.note.not_specified === 1 ? 1 : 0;
+                        this.note.invalid_label = this.note.invalid_label === 1 ? true : false;
+                        this.note.not_specified = this.note.not_specified === "1" ? true : false;  // Proper conversion to boolean
+                        console.log('Converted not_specified to boolean:', this.note.not_specified);
                         this.totalRows = data.total_rows;
                         this.gotoRow = this.currentRow + 1;
                         this.fileLoaded = true;
@@ -96,6 +98,60 @@ new Vue({
                 .catch(error => {
                     console.error('Error loading note:', error);
                 });
+        },
+        saveNote() {
+            return new Promise((resolve, reject) => {
+                console.log('Saving note for row:', this.currentRow);
+                this.isSaving = true;
+                const data = {
+                    question: this.note.question || '',
+                    type: this.note.type || '',
+                    answer: this.note.answer || '',
+                    section: this.note.section || '',
+                    source: this.note.source || '',
+                    explanation: this.note.explanation || '',
+                    invalid_label: this.note.invalid_label ? 1 : 0,
+                    not_specified: this.note.not_specified ? 1 : 0  // Proper conversion back to 1/0
+                };
+
+                console.log('Data being saved:', data);
+
+                fetch(`/api/note/${this.currentRow}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            console.log('Note saved successfully:', data);
+                            this.showMessage = true;
+                            this.saveMessage = `File Saved`;
+                            this.isSaving = false;
+                            setTimeout(() => {
+                                this.showMessage = false;
+                            }, 3000);  // Display for 3 seconds
+                            if (this.saveNext && this.currentRow < this.totalRows - 1) {
+                                this.currentRow++;
+                                this.saveNext = false;
+                                this.loadNote();
+                            }
+                            resolve();
+                        } else {
+                            console.log('Error saving note:', data);
+                            alert('Error saving note');
+                            this.isSaving = false;
+                            reject('Error saving note');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error saving note:', error);
+                        this.isSaving = false;
+                        reject(error);
+                    });
+            });
         },
         prevNote() {
             this.saveNote().then(() => {
@@ -128,55 +184,6 @@ new Vue({
                 console.error('Error saving note:', error);
             });
         },
-        saveNote() {
-            return new Promise((resolve, reject) => {
-                this.isSaving = true;
-                const data = {
-                    question: this.note.question || '',
-                    type: this.note.type || '',
-                    answer: this.note.answer || '',
-                    section: this.note.section || '',
-                    source: this.note.source || '',
-                    explanation: this.note.explanation || '',
-                    invalid_label: this.note.invalid_label ? 1 : 0,
-                    not_specified: this.note.not_specified ? 1 : 0
-                };
-
-                fetch(`/api/note/${this.currentRow}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data),
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === 'success') {
-                            this.showMessage = true;
-                            this.saveMessage = `File Saved`;
-                            this.isSaving = false;
-                            setTimeout(() => {
-                                this.showMessage = false;
-                            }, 3000);  // Display for 3 seconds
-                            if (this.saveNext && this.currentRow < this.totalRows - 1) {
-                                this.currentRow++;
-                                this.saveNext = false;
-                                this.loadNote();
-                            }
-                            resolve();
-                        } else {
-                            alert('Error saving note');
-                            this.isSaving = false;
-                            reject('Error saving note');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error saving note:', error);
-                        this.isSaving = false;
-                        reject(error);
-                    });
-            });
-        },
         handleFileUpload(event) {
             const file = event.target.files[0];
             if (file) {
@@ -189,6 +196,7 @@ new Vue({
                     .then(response => response.json())
                     .then(data => {
                         if (data.status === 'success') {
+                            console.log('File uploaded successfully:', data);
                             this.totalRows = data.total_rows;
                             this.currentRow = 0;
                             this.currentFile = file.name;
@@ -253,6 +261,7 @@ new Vue({
             });
         },
         handleNotSpecified() {
+            console.log('Handling not_specified change:', this.note.not_specified);
             if (this.note.not_specified) {
                 this.note.answer = '';
                 if (this.note.question_type === 'yes') {
@@ -261,13 +270,15 @@ new Vue({
             }
         },
         markEdited() {
+            console.log('Marking note as edited.');
             this.note.edited = 1;
         }
     },
     watch: {
         'note.answer': function(newVal) {
+            console.log('Answer changed:', newVal);
             if (newVal) {
-                this.note.not_specified = 0;
+                this.note.not_specified = false;
                 this.markEdited();
             }
         },
@@ -288,11 +299,12 @@ new Vue({
         },
         'note.question_type': function(newVal) {
             if (newVal && (this.note.answer === 'Yes' || this.note.answer === 'No')) {
-                this.note.not_specified = 0;
+                this.note.not_specified = false;
             }
             this.markEdited();
         },
         'note.not_specified': function(newVal, oldVal) {
+            console.log('Not Specified changed from:', oldVal, 'to:', newVal);
             this.handleNotSpecified();
             this.markEdited();
         },
@@ -317,4 +329,3 @@ new Vue({
         });
     }
 });
-

@@ -70,6 +70,7 @@ def get_note(row_id):
             note['row_id'] = row_id
             note['total_rows'] = len(df)
             df.at[row_id, 'Reviewed'] = 1
+            app.logger.error(f"not specified: {note['not_specified']}")
             return jsonify(note)
         else:
             return jsonify({'error': 'Row ID out of range'}), 404

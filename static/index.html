@@ -63,6 +63,10 @@
                     <button :class="{'btn btn-primary': note.answer === 'Yes', 'btn btn-outline-primary': note.answer !== 'Yes'}" @click="note.answer = 'Yes'">Yes</button>
                     <button :class="{'btn btn-primary': note.answer === 'No', 'btn btn-outline-primary': note.answer !== 'No'}" @click="note.answer = 'No'">No</button>
                 </div>
+                <div v-else-if="note.question_type === 'na-bool'" class="toggle-btn-group">
+                    <button :class="{'btn btn-primary': note.answer === 'Yes', 'btn btn-outline-primary': note.answer !== 'Yes'}" @click="note.answer = 'Yes'">Yes</button>
+                    <button :class="{'btn btn-primary': note.answer === 'No', 'btn btn-outline-primary': note.answer !== 'No'}" @click="note.answer = 'No'">No</button>
+                </div>
                 <div v-else>
                     <input v-model="note.answer" type="text" class="form-control editable-field" ref="answerField">
                 </div>
